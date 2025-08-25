@@ -56,7 +56,7 @@ export default function NewOrderPage() {
   const { findCustomersByContact, customers } = useCustomers();
   const { discountSettings, canApplyDiscount, getActiveDiscountRates } = useDiscountSettings();
   const { settings } = useSettings();
-  const { deliveryFees, loading: deliveryFeesLoading, getDeliveryFeeByDistrict, isFreeDelivery } = useDeliveryFees();
+  const { deliveryFees, loading: deliveryFeesLoading, getDeliveryFeeByDistrict } = useDeliveryFees();
   const router = useRouter();
   
   // 배송비 계산 함수
@@ -277,21 +277,7 @@ export default function NewOrderPage() {
     }
   }, [ordererName, ordererContact, receiptType]);
   // 배송비 자동 계산 로직
-  useEffect(() => {
-    if (receiptType === 'delivery_reservation' && deliveryFeeType === 'manual') {
-      // 무료 배송 기준 확인
-      const freeThreshold = settings?.freeDeliveryThreshold || 0;
-      const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      
-      if (freeThreshold > 0 && subtotal >= freeThreshold) {
-        setManualDeliveryFee(0);
-      } else if (manualDeliveryFee === 0 && subtotal < freeThreshold) {
-        // 무료 배송 기준 미달 시 기본 배송비 설정
-        const defaultFee = settings?.defaultDeliveryFee || 0;
-        setManualDeliveryFee(defaultFee);
-      }
-    }
-  }, [orderItems, receiptType, deliveryFeeType, settings?.freeDeliveryThreshold, settings?.defaultDeliveryFee, manualDeliveryFee]);
+  // 무료배송비 관련 코드 제거됨
 
   // 배송지 주소 변경 시 배송비 자동 계산
   useEffect(() => {
@@ -346,23 +332,12 @@ export default function NewOrderPage() {
   const deliveryFee = useMemo(() => {
     if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') return 0;
     
-    const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    
     if (deliveryFeeType === 'manual') {
-      // 새로운 무료배송 시스템 확인
-      if (selectedDistrict && isFreeDelivery(selectedDistrict, subtotal)) {
-        return 0;
-      }
       return manualDeliveryFee;
     }
     
-    // 자동 계산: 무료배송 기준 확인
-    if (selectedDistrict && isFreeDelivery(selectedDistrict, subtotal)) {
-      return 0;
-    }
-    
     return calculatedDeliveryFee;
-  }, [deliveryFeeType, manualDeliveryFee, receiptType, orderItems, calculatedDeliveryFee, selectedDistrict, isFreeDelivery]);
+  }, [deliveryFeeType, manualDeliveryFee, receiptType, calculatedDeliveryFee]);
   const debouncedSearch = useCallback(
     debounce(async (contact: string) => {
       if (contact.length >= 4) {
@@ -666,12 +641,7 @@ const debouncedCustomerSearch = useCallback(
             setCalculatedDeliveryFee(fee);
             setSelectedDistrict(district);
             
-            // 무료 배송 기준 확인
-            const freeThreshold = settings?.freeDeliveryThreshold || 0;
-            const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-            if (freeThreshold > 0 && subtotal >= freeThreshold) {
-              setCalculatedDeliveryFee(0);
-            }
+
           }
         }
       }).open();
@@ -1249,11 +1219,6 @@ const debouncedCustomerSearch = useCallback(
                                               </div>
                                           )}
                                           
-                                          {settings?.freeDeliveryThreshold && settings.freeDeliveryThreshold > 0 && (
-                                              <p className="text-xs text-muted-foreground">
-                                                  {settings.freeDeliveryThreshold.toLocaleString()}원 이상 주문 시 무료 배송
-                                              </p>
-                                          )}
                                       </div>
                                   </CardContent>
                               </Card>
@@ -1340,15 +1305,7 @@ const debouncedCustomerSearch = useCallback(
                               {deliveryFee === 0 ? "무료" : `₩${deliveryFee.toLocaleString()}`}
                             </span>
                         </div>
-                        {settings?.freeDeliveryThreshold && settings.freeDeliveryThreshold > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            {orderSummary.subtotal >= settings.freeDeliveryThreshold ? (
-                              <span className="text-green-600">✓ 무료 배송 기준 달성</span>
-                            ) : (
-                              <span>무료 배송까지 {((settings.freeDeliveryThreshold - orderSummary.subtotal) / 1000).toFixed(0)}천원 더</span>
-                            )}
-                          </div>
-                        )}
+
                         <Separator />
                         <div className="space-y-2">
                             <Label htmlFor="used-points">포인트 사용</Label>

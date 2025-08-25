@@ -265,39 +265,22 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                  </div>
                </div>
                <Separator />
-               {/* 지점별 등록 정보 */}
+               {/* 고객 정보 */}
                <div>
-                 <h3 className="text-lg font-semibold mb-3">등록된 지점</h3>
-                 <div className="space-y-3">
-                   <div className="border rounded-lg p-3">
-                         <div className="flex items-center justify-between">
-                           <div>
-                             <p className="font-medium">{branchId}</p>
-                             <p className="text-sm text-muted-foreground">
-                               등록일: {formatSafeDate(branchInfo.registeredAt)}
-                             </p>
-                             {branchInfo.grade && (
-                               <p className="text-sm text-muted-foreground">
-                                 등급: {branchInfo.grade}
-                               </p>
-                             )}
-                           </div>
-                           {branchId === currentCustomer.primaryBranch && (
-                             <Badge variant="secondary" className="text-xs">
-                               주 거래 지점
-                             </Badge>
-                           )}
-                         </div>
-                         {branchInfo.notes && (
-                           <p className="text-sm text-muted-foreground mt-2">
-                             메모: {branchInfo.notes}
-                           </p>
-                         )}
-                       </div>
-                     ))}
+                 <h3 className="text-lg font-semibold mb-3">고객 정보</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                     <label className="text-sm font-medium text-muted-foreground">고객 유형</label>
+                     <p className="text-sm mt-1">{currentCustomer.type === 'company' ? '기업' : '개인'}</p>
                    </div>
+                   {currentCustomer.companyName && (
+                     <div>
+                       <label className="text-sm font-medium text-muted-foreground">회사명</label>
+                       <p className="text-sm mt-1">{currentCustomer.companyName}</p>
+                     </div>
+                   )}
                  </div>
-               )}
+               </div>
               <Separator />
                              {/* 포인트 정보 */}
                <div>

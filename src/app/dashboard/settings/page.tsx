@@ -1147,41 +1147,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        {/* 배송 설정 */}
-        <TabsContent value="delivery" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Truck className="h-5 w-5" />
-                배송비 설정
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="defaultDeliveryFee">기본 배송비 (원)</Label>
-                  <Input
-                    id="defaultDeliveryFee"
-                    type="number"
-                    min="0"
-                    value={localSettings.defaultDeliveryFee}
-                    onChange={(e) => setLocalSettings(prev => ({ ...prev, defaultDeliveryFee: Number(e.target.value) }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="freeDeliveryThreshold">무료 배송 기준 (원)</Label>
-                  <Input
-                    id="freeDeliveryThreshold"
-                    type="number"
-                    min="0"
-                    value={localSettings.freeDeliveryThreshold}
-                    onChange={(e) => setLocalSettings(prev => ({ ...prev, freeDeliveryThreshold: Number(e.target.value) }))}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+
         {/* 알림 설정 */}
         <TabsContent value="notifications" className="space-y-4">
           <Card>

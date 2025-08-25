@@ -173,7 +173,7 @@ export function OrderEditDialog({ open, onOpenChange, order }: OrderEditDialogPr
 
   const calculateTotal = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const deliveryFee = formData.receiptType === 'delivery_reservation' ? 3000 : 0;
+    const deliveryFee = 0;
     
     // 기존 주문의 할인 정보 사용
     const discountAmount = order?.summary?.discountAmount || 0;

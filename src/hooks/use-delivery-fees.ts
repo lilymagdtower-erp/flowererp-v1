@@ -73,47 +73,6 @@ export function useDeliveryFees() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // 배송비 설정 초기화
-  const initializeDeliveryData = useCallback(async () => {
-    try {
-      const deliveryFeesCollection = collection(db, 'deliveryFees');
-      const deliverySettingsCollection = collection(db, 'deliverySettings');
-      
-      // 기존 데이터 확인
-      const feesSnapshot = await getDocs(deliveryFeesCollection);
-      const settingsSnapshot = await getDocs(deliverySettingsCollection);
-      
-      const batch = writeBatch(db);
-      
-      // 배송비 설정이 없으면 생성
-      if (settingsSnapshot.empty) {
-        const settingsDoc = doc(deliverySettingsCollection);
-        batch.set(settingsDoc, {
-          ...defaultDeliverySettings,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }
-      
-      // 지역별 배송비가 없으면 생성
-      if (feesSnapshot.empty) {
-        for (const fee of defaultDeliveryFees) {
-          const feeDoc = doc(deliveryFeesCollection);
-          batch.set(feeDoc, {
-            ...fee,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-        }
-      }
-      
-      await batch.commit();
-      console.log('배송비 데이터 초기화 완료');
-    } catch (error) {
-      console.error('배송비 데이터 초기화 오류:', error);
-    }
-  }, []);
-
   // 배송비 정보 조회
   const fetchDeliveryFees = useCallback(async () => {
     try {
@@ -140,12 +99,10 @@ export function useDeliveryFees() {
       setDeliveryFees(fees);
       setDeliverySettings(settings);
       
-      // 데이터가 없으면 초기화
-      if (fees.length === 0 || !settings) {
-        await initializeDeliveryData();
-        // 재조회
-        setTimeout(() => fetchDeliveryFees(), 1000);
-      }
+      console.log('배송비 데이터 조회 완료:', {
+        feesCount: fees.length,
+        settings: settings ? '있음' : '없음'
+      });
     } catch (error) {
       console.error('배송비 정보 조회 오류:', error);
       toast({
@@ -156,7 +113,59 @@ export function useDeliveryFees() {
     } finally {
       setLoading(false);
     }
-  }, [toast, initializeDeliveryData]);
+  }, [toast]);
+
+  // 배송비 설정 초기화
+  const initializeDeliveryData = useCallback(async () => {
+    try {
+      console.log('배송비 데이터 초기화 시작');
+      const deliveryFeesCollection = collection(db, 'deliveryFees');
+      const deliverySettingsCollection = collection(db, 'deliverySettings');
+      
+      // 기존 데이터 확인
+      const feesSnapshot = await getDocs(deliveryFeesCollection);
+      const settingsSnapshot = await getDocs(deliverySettingsCollection);
+      
+      console.log('기존 데이터 확인:', {
+        feesCount: feesSnapshot.size,
+        settingsCount: settingsSnapshot.size
+      });
+      
+      const batch = writeBatch(db);
+      
+      // 배송비 설정이 없으면 생성
+      if (settingsSnapshot.empty) {
+        console.log('배송 설정 생성 중...');
+        const settingsDoc = doc(deliverySettingsCollection);
+        batch.set(settingsDoc, {
+          ...defaultDeliverySettings,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      
+      // 지역별 배송비가 없으면 생성
+      if (feesSnapshot.empty) {
+        console.log('지역별 배송비 생성 중...');
+        for (const fee of defaultDeliveryFees) {
+          const feeDoc = doc(deliveryFeesCollection);
+          batch.set(feeDoc, {
+            ...fee,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+      
+      await batch.commit();
+      console.log('배송비 데이터 초기화 완료');
+      
+      // 초기화 후 즉시 재조회
+      await fetchDeliveryFees();
+    } catch (error) {
+      console.error('배송비 데이터 초기화 오류:', error);
+    }
+  }, [fetchDeliveryFees]);
 
   useEffect(() => {
     fetchDeliveryFees();
@@ -200,14 +209,53 @@ export function useDeliveryFees() {
     }
   };
 
+  // 새로운 지역 추가 함수
+  const addNewDistrict = async (district: string, fee: number) => {
+    try {
+      // 중복 확인
+      const existingFee = deliveryFees.find(f => f.district === district);
+      if (existingFee) {
+        toast({
+          variant: 'destructive',
+          title: '오류',
+          description: '이미 존재하는 지역입니다.',
+        });
+        return;
+      }
+
+      const newFeeData = {
+        district,
+        fee,
+        freeThreshold: deliverySettings?.freeThreshold || 50000,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, 'deliveryFees'), newFeeData);
+      
+      toast({
+        title: '성공',
+        description: '새로운 지역이 추가되었습니다.',
+      });
+      
+      await fetchDeliveryFees();
+    } catch (error) {
+      console.error('지역 추가 오류:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '지역 추가 중 오류가 발생했습니다.',
+      });
+    }
+  };
+
   return {
     deliveryFees,
-    deliverySettings,
     loading,
     fetchDeliveryFees,
     updateDeliveryFee,
+    addNewDistrict,
     getDeliveryFeeByDistrict,
-    isFreeDelivery,
     // 기존 API 호환성
     refetch: fetchDeliveryFees
   };

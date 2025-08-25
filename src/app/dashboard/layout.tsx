@@ -103,6 +103,9 @@ export default function DashboardLayout({
       case 'pickup-delivery':
         icon = <Truck className="h-4 w-4" />;
         break;
+      case 'delivery-fees':
+        icon = <MapPin className="h-4 w-4" />;
+        break;
       case 'recipients':
         icon = <BookUser className="h-4 w-4" />;
         break;
@@ -173,6 +176,7 @@ export default function DashboardLayout({
                           { key: 'products', label: '상품관리', href: '/dashboard/products', icon: <Boxes className="h-4 w-4" /> },
                           { key: 'materials', label: '자재관리', href: '/dashboard/materials', icon: <Package className="h-4 w-4" /> },
                           { key: 'pickup-delivery', label: '픽업/배송', href: '/dashboard/pickup-delivery', icon: <Truck className="h-4 w-4" /> },
+                          { key: 'delivery-fees', label: '배송비 설정', href: '/dashboard/delivery-fees', icon: <MapPin className="h-4 w-4" /> },
                           { key: 'recipients', label: '수령자관리', href: '/dashboard/recipients', icon: <BookUser className="h-4 w-4" /> },
                           { key: 'simple-expenses', label: '지출관리', href: '/dashboard/simple-expenses', icon: <DollarSign className="h-4 w-4" /> },
                           { key: 'partners', label: '거래처관리', href: '/dashboard/partners', icon: <Briefcase className="h-4 w-4" /> },

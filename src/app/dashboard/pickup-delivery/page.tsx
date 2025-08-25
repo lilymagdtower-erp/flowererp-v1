@@ -59,23 +59,10 @@ export default function PickupDeliveryPage() {
   const [exportEndDate, setExportEndDate] = useState<Date | undefined>(undefined);
   const [isDeliveryCostDialogOpen, setIsDeliveryCostDialogOpen] = useState(false);
   const [selectedOrderForCost, setSelectedOrderForCost] = useState<Order | null>(null);
-  const [deliveryCost, setDeliveryCost] = useState('');
-  const [deliveryCostReason, setDeliveryCostReason] = useState('');
-  // 배송비 설정 관리 상태
-  const [isDeliveryFeeSettingsOpen, setIsDeliveryFeeSettingsOpen] = useState(false);
-  const [selectedBranchForSettings, setSelectedBranchForSettings] = useState<string>('');
-  const [editingDeliveryFees, setEditingDeliveryFees] = useState<Array<{district: string, fee: number}>>([]);
-  const [newDistrict, setNewDistrict] = useState('');
-  const [newFee, setNewFee] = useState('');
-  const [surcharges, setSurcharges] = useState({
-    mediumItem: 0,
-    largeItem: 0,
-    express: 0
-  });
-  // 편집 모드 상태 추가
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingDistrict, setEditingDistrict] = useState('');
-  const [editingFee, setEditingFee] = useState('');
+  const [actualDeliveryCost, setActualDeliveryCost] = useState('');
+  const [deliveryCostNote, setDeliveryCostNote] = useState('');
+
+
   
   // 날짜 필터링 상태 추가
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
@@ -413,84 +400,7 @@ export default function PickupDeliveryPage() {
       pieChartData
     };
   }, [completedDeliveryOrders]);
-  // 배송비 설정 관련 함수들
-  const handleOpenDeliveryFeeSettings = (branchName: string) => {
-    setSelectedBranchForSettings(branchName);
-    // 단일 매장 시스템이므로 기본값 사용
-    setEditingDeliveryFees([]);
-    setSurcharges({
-      mediumItem: 0,
-      largeItem: 0,
-      express: 0
-    });
-    // 편집 모드 초기화
-    setEditingIndex(null);
-    setEditingDistrict('');
-    setEditingFee('');
-    setIsDeliveryFeeSettingsOpen(true);
-  };
-  const handleSaveDeliveryFeeSettings = async () => {
-    try {
-      if (!selectedBranchForSettings) return;
-      // 단일 매장 시스템이므로 로컬 스토리지에 저장하거나 간단한 처리
-      toast({
-        title: '성공',
-        description: '배송비 설정이 저장되었습니다.',
-      });
-      // 편집 모드 초기화
-      setEditingIndex(null);
-      setEditingDistrict('');
-      setEditingFee('');
-      setIsDeliveryFeeSettingsOpen(false);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '배송비 설정 저장 중 오류가 발생했습니다.',
-      });
-    }
-  };
-  const addDeliveryFee = () => {
-    if (!newDistrict.trim() || !newFee.trim()) return;
-    const fee = parseInt(newFee);
-    if (isNaN(fee)) return;
-    setEditingDeliveryFees(prev => [...prev, { district: newDistrict.trim(), fee }]);
-    setNewDistrict('');
-    setNewFee('');
-  };
-  const removeDeliveryFee = (index: number) => {
-    setEditingDeliveryFees(prev => prev.filter((_, i) => i !== index));
-  };
-  
-  // 편집 관련 함수들 추가
-  const startEditing = (index: number, district: string, fee: number) => {
-    setEditingIndex(index);
-    setEditingDistrict(district);
-    setEditingFee(fee.toString());
-  };
-  
-  const saveEdit = () => {
-    if (editingIndex === null || !editingDistrict.trim() || !editingFee.trim()) return;
-    const fee = parseInt(editingFee);
-    if (isNaN(fee)) return;
-    
-    setEditingDeliveryFees(prev => prev.map((item, index) => 
-      index === editingIndex 
-        ? { district: editingDistrict.trim(), fee }
-        : item
-    ));
-    
-    // 편집 모드 종료
-    setEditingIndex(null);
-    setEditingDistrict('');
-    setEditingFee('');
-  };
-  
-  const cancelEdit = () => {
-    setEditingIndex(null);
-    setEditingDistrict('');
-    setEditingFee('');
-  };
+
   const handleCompletePickup = async (orderId: string) => {
     try {
       await updateOrderStatus(orderId, 'completed');
@@ -640,12 +550,12 @@ export default function PickupDeliveryPage() {
   };
   const handleDeliveryCostInput = (order: Order) => {
     setSelectedOrderForCost(order);
-    setDeliveryCost('');
-    setDeliveryCostReason('');
+    setActualDeliveryCost('');
+    setDeliveryCostNote('');
     setIsDeliveryCostDialogOpen(true);
   };
   const handleSaveDeliveryCost = async () => {
-    if (!selectedOrderForCost || !deliveryCost) {
+    if (!selectedOrderForCost || !actualDeliveryCost) {
       toast({
         variant: 'destructive',
         title: '오류',
@@ -654,13 +564,13 @@ export default function PickupDeliveryPage() {
       return;
     }
     try {
-      const actualCost = parseInt(deliveryCost);
+      const actualCost = parseInt(actualDeliveryCost);
       await updateOrder(selectedOrderForCost.id, {
         actualDeliveryCost: actualCost,
         deliveryCostStatus: 'completed',
         deliveryCostUpdatedAt: new Date(),
         deliveryCostUpdatedBy: user?.email || 'unknown',
-        deliveryCostReason: deliveryCostReason,
+        deliveryCostReason: deliveryCostNote,
         deliveryProfit: (selectedOrderForCost.summary?.deliveryFee || 0) - actualCost,
       });
       
@@ -672,8 +582,8 @@ export default function PickupDeliveryPage() {
       });
       setIsDeliveryCostDialogOpen(false);
       setSelectedOrderForCost(null);
-      setDeliveryCost('');
-      setDeliveryCostReason('');
+      setActualDeliveryCost('');
+      setDeliveryCostNote('');
     } catch (error) {
       console.error('Error saving delivery cost:', error);
       toast({
@@ -727,7 +637,18 @@ export default function PickupDeliveryPage() {
       <PageHeader 
         title="픽업/배송예약관리" 
         description="픽업 및 배송 예약 현황을 관리하고 처리 상태를 업데이트합니다."
-      />
+      >
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => window.open('/dashboard/delivery-fees', '_blank')}
+            className="flex items-center gap-2"
+          >
+            <MapPin className="w-4 h-4" />
+            배송비 설정
+          </Button>
+        </div>
+      </PageHeader>
       
 
       {/* 필터 섹션 */}
@@ -1462,38 +1383,7 @@ export default function PickupDeliveryPage() {
                      </Card>
                    </div>
                  </div>
-                 {/* 배송비 설정 섹션 */}
-                 <div>
-                   <h3 className="text-lg font-semibold mb-4">배송비 설정</h3>
-                   <div className="space-y-4">
-                     <div className="grid gap-4 md:grid-cols-1">
-                       {availableBranches.map(branch => (
-                         <Card key={branch.name}>
-                           <CardContent>
-                             <div className="space-y-2">
-                               <div className="flex justify-between text-sm">
-                                 <span>지역별 배송비:</span>
-                                 <span>0개 지역</span>
-                               </div>
-                               <div className="flex justify-between text-sm">
-                                 <span>추가 요금:</span>
-                                 <span>없음</span>
-                               </div>
-                               <Button 
-                                 variant="outline" 
-                                 size="sm" 
-                                 className="w-full mt-2"
-                                 onClick={() => handleOpenDeliveryFeeSettings(branch.name)}
-                               >
-                                 배송비 설정
-                               </Button>
-                             </div>
-                           </CardContent>
-                         </Card>
-                       ))}
-                     </div>
-                   </div>
-                 </div>
+
                </div>
              </CardContent>
            </Card>
@@ -1711,18 +1601,18 @@ export default function PickupDeliveryPage() {
                <Input
                  id="delivery-cost"
                  type="number"
-                 value={deliveryCost}
-                 onChange={(e) => setDeliveryCost(e.target.value)}
+                 value={actualDeliveryCost}
+                 onChange={(e) => setActualDeliveryCost(e.target.value)}
                  placeholder="실제 지출한 배송비를 입력하세요"
                  className="mt-1"
                />
              </div>
              <div>
-               <Label htmlFor="delivery-cost-reason">배송비 입력 이유 (선택)</Label>
+               <Label htmlFor="delivery-cost-note">배송비 입력 이유 (선택)</Label>
                <Input
-                 id="delivery-cost-reason"
-                 value={deliveryCostReason}
-                 onChange={(e) => setDeliveryCostReason(e.target.value)}
+                 id="delivery-cost-note"
+                 value={deliveryCostNote}
+                 onChange={(e) => setDeliveryCostNote(e.target.value)}
                  placeholder="예: 거리 추가, 야간 배송, 긴급 배송 등"
                  className="mt-1"
                />
@@ -1733,8 +1623,8 @@ export default function PickupDeliveryPage() {
                  onClick={() => {
                    setIsDeliveryCostDialogOpen(false);
                    setSelectedOrderForCost(null);
-                   setDeliveryCost('');
-                   setDeliveryCostReason('');
+                   setActualDeliveryCost('');
+                   setDeliveryCostNote('');
                  }}
                >
                  취소
@@ -1746,193 +1636,7 @@ export default function PickupDeliveryPage() {
            </div>
          </DialogContent>
        </Dialog>
-       {/* 배송비 설정 다이얼로그 */}
-       <Dialog open={isDeliveryFeeSettingsOpen} onOpenChange={(open) => {
-         setIsDeliveryFeeSettingsOpen(open);
-         if (!open) {
-           // 다이얼로그가 닫힐 때 편집 모드 초기화
-           setEditingIndex(null);
-           setEditingDistrict('');
-           setEditingFee('');
-         }
-       }}>
-         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-           <DialogHeader>
-             <DialogTitle>배송비 설정</DialogTitle>
-             <DialogDescription>
-               지역별 배송비와 추가 요금을 설정할 수 있습니다. 설정한 배송비는 배송 주문에 적용됩니다.
-             </DialogDescription>
-           </DialogHeader>
-           <div className="space-y-6">
-             {/* 지역별 배송비 설정 */}
-             <div>
-               <h4 className="text-lg font-semibold mb-4">지역별 배송비</h4>
-               <div className="space-y-4">
-                 <div className="grid grid-cols-3 gap-4">
-                   <div>
-                     <Label htmlFor="new-district">지역명</Label>
-                     <Input
-                       id="new-district"
-                       value={newDistrict}
-                       onChange={(e) => setNewDistrict(e.target.value)}
-                       placeholder="예: 강남구"
-                     />
-                   </div>
-                   <div>
-                     <Label htmlFor="new-fee">배송비</Label>
-                     <Input
-                       id="new-fee"
-                       type="number"
-                       value={newFee}
-                       onChange={(e) => setNewFee(e.target.value)}
-                       placeholder="예: 15000"
-                     />
-                   </div>
-                   <div className="flex items-end">
-                     <Button onClick={addDeliveryFee} className="w-full">
-                       추가
-                     </Button>
-                   </div>
-                 </div>
-                 <div className="space-y-2">
-                   {editingDeliveryFees.map((item, index) => (
-                     <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
-                       editingIndex === index ? 'bg-blue-50 border border-blue-200' : 'bg-muted'
-                     }`}>
-                       {editingIndex === index ? (
-                         // 편집 모드
-                         <div className="flex-1">
-                           <div className="flex items-center gap-2">
-                             <Edit className="w-4 h-4 text-blue-600" />
-                             <Input
-                               value={editingDistrict}
-                               onChange={(e) => setEditingDistrict(e.target.value)}
-                               placeholder="지역명"
-                               className="flex-1"
-                               onKeyDown={(e) => {
-                                 if (e.key === 'Enter') saveEdit();
-                                 if (e.key === 'Escape') cancelEdit();
-                               }}
-                             />
-                             <Input
-                               type="number"
-                               value={editingFee}
-                               onChange={(e) => setEditingFee(e.target.value)}
-                               placeholder="배송비"
-                               className="w-24"
-                               onKeyDown={(e) => {
-                                 if (e.key === 'Enter') saveEdit();
-                                 if (e.key === 'Escape') cancelEdit();
-                               }}
-                             />
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={saveEdit}
-                             >
-                               저장
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={cancelEdit}
-                             >
-                               취소
-                             </Button>
-                           </div>
-                           <div className="text-xs text-muted-foreground mt-1 ml-6">
-                             Enter: 저장, Escape: 취소
-                           </div>
-                         </div>
-                       ) : (
-                         // 일반 모드
-                         <>
-                           <div className="flex-1">
-                             <span className="font-medium">{item.district}</span>
-                             <span className="ml-4 text-muted-foreground">₩{item.fee.toLocaleString()}</span>
-                           </div>
-                           <div className="flex gap-2">
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => startEditing(index, item.district, item.fee)}
-                             >
-                               수정
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => removeDeliveryFee(index)}
-                             >
-                               삭제
-                             </Button>
-                           </div>
-                         </>
-                       )}
-                     </div>
-                   ))}
-                 </div>
-               </div>
-             </div>
-             {/* 추가 요금 설정 */}
-             <div>
-               <h4 className="text-lg font-semibold mb-4">추가 요금 설정</h4>
-               <div className="grid grid-cols-3 gap-4">
-                 <div>
-                   <Label htmlFor="medium-item">중간품목 추가요금</Label>
-                   <Input
-                     id="medium-item"
-                     type="number"
-                     value={surcharges.mediumItem}
-                     onChange={(e) => setSurcharges(prev => ({
-                       ...prev,
-                       mediumItem: parseInt(e.target.value) || 0
-                     }))}
-                     placeholder="0"
-                   />
-                 </div>
-                 <div>
-                   <Label htmlFor="large-item">대형품목 추가요금</Label>
-                   <Input
-                     id="large-item"
-                     type="number"
-                     value={surcharges.largeItem}
-                     onChange={(e) => setSurcharges(prev => ({
-                       ...prev,
-                       largeItem: parseInt(e.target.value) || 0
-                     }))}
-                     placeholder="0"
-                   />
-                 </div>
-                 <div>
-                   <Label htmlFor="express">긴급배송 추가요금</Label>
-                   <Input
-                     id="express"
-                     type="number"
-                     value={surcharges.express}
-                     onChange={(e) => setSurcharges(prev => ({
-                       ...prev,
-                       express: parseInt(e.target.value) || 0
-                     }))}
-                     placeholder="0"
-                   />
-                 </div>
-               </div>
-             </div>
-             <div className="flex justify-end gap-2">
-               <Button
-                 variant="outline"
-                 onClick={() => setIsDeliveryFeeSettingsOpen(false)}
-               >
-                 취소
-               </Button>
-               <Button onClick={handleSaveDeliveryFeeSettings}>
-                 저장
-               </Button>
-             </div>
-           </div>
-         </DialogContent>
-       </Dialog>
+
      </div>
    );
  }

@@ -19,9 +19,7 @@ export interface SystemSettings {
   contactEmail: string;
   contactPhone: string;
 
-  // 기본 배송비 설정
-  defaultDeliveryFee: number;
-  freeDeliveryThreshold: number;
+
 
   // 알림 설정
   emailNotifications: boolean;
@@ -103,8 +101,6 @@ export const defaultSettings: SystemSettings = {
   siteDescription: "플라워샵 주문관리 및 가맹점 관리를 위한 ERP 시스템",
   contactEmail: "admin@lilymag.com",
   contactPhone: "02-1234-5678",
-  defaultDeliveryFee: 3000,
-  freeDeliveryThreshold: 50000,
   emailNotifications: true,
   smsNotifications: false,
   autoBackup: true,

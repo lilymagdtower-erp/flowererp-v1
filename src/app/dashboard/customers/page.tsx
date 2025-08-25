@@ -79,13 +79,30 @@ export default function CustomersPage() {
         setIsStatementOpen(true);
     };
     const handleFormSubmit = async (data: CustomerFormValues) => {
-        if (selectedCustomer?.id) {
-            await updateCustomer(selectedCustomer.id, data);
-        } else {
-            await addCustomer(data);
+        try {
+            if (selectedCustomer?.id) {
+                await updateCustomer(selectedCustomer.id, data);
+                toast({
+                    title: "성공",
+                    description: "고객 정보가 수정되었습니다.",
+                });
+            } else {
+                await addCustomer(data);
+                toast({
+                    title: "성공",
+                    description: "새 고객이 등록되었습니다.",
+                });
+            }
+            setIsFormOpen(false);
+            setSelectedCustomer(null);
+        } catch (error: any) {
+            console.error("고객 저장 중 오류:", error);
+            toast({
+                variant: "destructive",
+                title: "오류",
+                description: error.message || "고객 정보 저장 중 오류가 발생했습니다.",
+            });
         }
-        setIsFormOpen(false);
-        setSelectedCustomer(null);
     };
     const handleDelete = async (id: string) => {
         await deleteCustomer(id);

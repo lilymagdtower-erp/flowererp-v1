@@ -28,6 +28,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
 import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc, query, where, getDocs, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 import { Loader2 } from "lucide-react"
 import { POSITION_OPTIONS, POSITION_TO_ROLE } from "@/lib/constants";
 // 직원 데이터 타입 정의
@@ -285,32 +287,58 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
           }, 1000);
         }
       } else {
-        // 새 사용자 추가
-        const userDocRef = doc(db, "users", data.email);
-        await setDoc(userDocRef, {
-          email: data.email,
-          role: finalRole,
-          franchise: data.franchise,
-          createdAt: serverTimestamp(),
-          isActive: true
-        });
+        // 새 사용자 추가 - Firebase Authentication 계정도 함께 생성
+        try {
+          // 1. Firebase Authentication 계정 생성
+          const defaultPassword = data.password || "123456"; // 사용자가 입력한 비밀번호 또는 기본값
+          await createUserWithEmailAndPassword(auth, data.email, defaultPassword);
+          
+          // 2. Firestore users 컬렉션에 사용자 정보 저장
+          const userDocRef = doc(db, "users", data.email);
+          await setDoc(userDocRef, {
+            email: data.email,
+            role: finalRole,
+            franchise: data.franchise,
+            createdAt: serverTimestamp(),
+            isActive: true
+          });
 
-        // 직원 데이터도 함께 생성
-        await addDoc(collection(db, "employees"), {
-          email: data.email,
-          name: data.name,
-          position: data.position,
-          contact: data.contact,
-          department: "일반",
-          hireDate: new Date(),
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+          // 3. 직원 데이터도 함께 생성
+          await addDoc(collection(db, "employees"), {
+            email: data.email,
+            name: data.name,
+            position: data.position,
+            contact: data.contact,
+            department: "일반",
+            hireDate: new Date(),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
 
-        toast({
-          title: "성공",
-          description: "새 사용자가 추가되었습니다.",
-        });
+          toast({
+            title: "성공",
+            description: `새 사용자가 추가되었습니다.${!data.password ? ` 기본 비밀번호: ${defaultPassword}` : ''}`,
+          });
+        } catch (authError: any) {
+          console.error("Firebase Auth 계정 생성 실패:", authError);
+          
+          // 이미 Firebase Auth에 계정이 존재하는 경우
+          if (authError.code === 'auth/email-already-in-use') {
+            toast({
+              variant: "destructive",
+              title: "계정 중복",
+              description: "이미 Firebase에 등록된 이메일입니다. 다른 이메일을 사용하거나 기존 계정을 확인해주세요."
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "계정 생성 실패",
+              description: `Firebase 계정 생성 중 오류가 발생했습니다: ${authError.message}`
+            });
+          }
+          setLoading(false);
+          return;
+        }
       }
       // 사용자 업데이트 콜백 호출
       if (onUserUpdated) {

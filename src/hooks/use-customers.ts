@@ -43,6 +43,22 @@ export function useCustomers() {
   // 고객 추가
   const addCustomer = async (customerData: Omit<Customer, "id" | "createdAt" | "updatedAt">) => {
     try {
+      // 중복 체크: 이름과 연락처가 모두 일치하면 중복으로 처리
+      const nameQuery = query(collection(db, "customers"), where("name", "==", customerData.name));
+      const contactQuery = query(collection(db, "customers"), where("contact", "==", customerData.contact));
+      
+      const [nameSnapshot, contactSnapshot] = await Promise.all([
+        getDocs(nameQuery),
+        getDocs(contactQuery)
+      ]);
+      
+      // 중복 조건: 이름과 연락처가 모두 일치하는 고객이 있으면 중복
+      const isDuplicate = !nameSnapshot.empty && !contactSnapshot.empty;
+      
+      if (isDuplicate) {
+        throw new Error("이미 등록된 고객입니다. 이름과 연락처가 동일한 고객이 존재합니다.");
+      }
+      
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, "customers"), {
         ...customerData,
