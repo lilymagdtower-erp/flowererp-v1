@@ -23,6 +23,7 @@ export default function DeliveryFeesPage() {
   // 지역별 배송비 편집 상태
   const [editingFee, setEditingFee] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editDistrict, setEditDistrict] = useState('');
   
   // 새로운 지역 추가 상태
   const [newDistrict, setNewDistrict] = useState('');
@@ -56,16 +57,35 @@ export default function DeliveryFeesPage() {
       alert('올바른 배송비를 입력해주세요.');
       return;
     }
+
+    if (!editDistrict.trim()) {
+      alert('지역명을 입력해주세요.');
+      return;
+    }
+
+    // 다른 지역과 중복되는지 확인 (자기 자신 제외)
+    const existingFee = deliveryFees.find(f => 
+      f.district === editDistrict.trim() && f.id !== id
+    );
+    if (existingFee) {
+      alert('이미 존재하는 지역명입니다.');
+      return;
+    }
     
-    await updateDeliveryFee(id, { fee });
+    await updateDeliveryFee(id, { 
+      district: editDistrict.trim(),
+      fee 
+    });
     setEditingFee(null);
     setEditValue('');
+    setEditDistrict('');
   };
 
   // 배송비 편집 취소
   const handleEditCancel = () => {
     setEditingFee(null);
     setEditValue('');
+    setEditDistrict('');
   };
 
   // 새로운 지역 추가
@@ -196,29 +216,47 @@ export default function DeliveryFeesPage() {
                     return (
                       <TableRow key={fee.id} className={isDuplicate ? 'bg-red-50' : ''}>
                         <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {fee.district}
-                            {isDuplicate && (
-                              <Badge variant="destructive" className="text-xs">
-                                중복
-                              </Badge>
-                            )}
-                          </div>
+                          {editingFee === fee.id ? (
+                            <Input
+                              value={editDistrict}
+                              onChange={(e) => setEditDistrict(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleEditSave(fee.id || '');
+                                } else if (e.key === 'Escape') {
+                                  setEditingFee(null);
+                                  setEditValue('');
+                                  setEditDistrict('');
+                                }
+                              }}
+                              autoFocus
+                              className="w-32"
+                            />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              {fee.district}
+                              {isDuplicate && (
+                                <Badge variant="destructive" className="text-xs">
+                                  중복
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {editingFee === fee.id ? (
                             <Input
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                                                             onKeyDown={(e) => {
-                                 if (e.key === 'Enter') {
-                                   handleEditSave(fee.id || '');
-                                 } else if (e.key === 'Escape') {
-                                   setEditingFee(null);
-                                   setEditValue('');
-                                 }
-                               }}
-                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleEditSave(fee.id || '');
+                                } else if (e.key === 'Escape') {
+                                  setEditingFee(null);
+                                  setEditValue('');
+                                  setEditDistrict('');
+                                }
+                              }}
                               className="w-20"
                             />
                           ) : (
@@ -228,11 +266,11 @@ export default function DeliveryFeesPage() {
                         <TableCell className="text-center">
                           {editingFee === fee.id ? (
                             <div className="flex gap-1 justify-center">
-                                                             <Button
-                                 size="sm"
-                                 variant="outline"
-                                 onClick={() => handleEditSave(fee.id || '')}
-                               >
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditSave(fee.id || '')}
+                              >
                                 <Save className="h-3 w-3" />
                               </Button>
                               <Button
@@ -241,6 +279,7 @@ export default function DeliveryFeesPage() {
                                 onClick={() => {
                                   setEditingFee(null);
                                   setEditValue('');
+                                  setEditDistrict('');
                                 }}
                               >
                                 <X className="h-3 w-3" />
@@ -248,22 +287,23 @@ export default function DeliveryFeesPage() {
                             </div>
                           ) : (
                             <div className="flex gap-1 justify-center">
-                                                             <Button
-                                 size="sm"
-                                 variant="outline"
-                                 onClick={() => {
-                                   setEditingFee(fee.id || '');
-                                   setEditValue(fee.fee.toString());
-                                 }}
-                               >
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingFee(fee.id || '');
+                                  setEditValue(fee.fee.toString());
+                                  setEditDistrict(fee.district);
+                                }}
+                              >
                                 <Edit2 className="h-3 w-3" />
                               </Button>
-                                                             <Button
-                                 size="sm"
-                                 variant="outline"
-                                 onClick={() => deleteDistrict(fee.id || '', fee.district)}
-                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                               >
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deleteDistrict(fee.id || '', fee.district)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
