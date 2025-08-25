@@ -3,19 +3,21 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useDeliveryFees } from '@/hooks/use-delivery-fees';
+import { useDeliveryFees, DeliveryFee } from '@/hooks/use-delivery-fees';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Edit2, Save, X } from 'lucide-react';
+import { Loader2, Plus, Edit2, Save, X, Trash2, AlertTriangle } from 'lucide-react';
 
 export default function DeliveryFeesPage() {
   const { 
     deliveryFees, 
     loading, 
     updateDeliveryFee, 
-    addNewDistrict
+    addNewDistrict,
+    deleteDistrict,
+    removeDuplicateDistricts
   } = useDeliveryFees();
   
   // 지역별 배송비 편집 상태
@@ -26,6 +28,20 @@ export default function DeliveryFeesPage() {
   const [newDistrict, setNewDistrict] = useState('');
   const [newFee, setNewFee] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // 중복 데이터 감지
+  const duplicateDistricts = deliveryFees.reduce((acc, fee) => {
+    const existing = acc.find(f => f.district === fee.district);
+    if (existing) {
+      existing.count++;
+      existing.items.push(fee);
+    } else {
+      acc.push({ district: fee.district, count: 1, items: [fee] });
+    }
+    return acc;
+  }, [] as Array<{ district: string; count: number; items: DeliveryFee[] }>).filter(item => item.count > 1);
+
+  const hasDuplicates = duplicateDistricts.length > 0;
 
   // 배송비 편집 시작
   const handleEditStart = (id: string, currentFee: number) => {
@@ -85,7 +101,21 @@ export default function DeliveryFeesPage() {
       <PageHeader
         title="배송비 관리"
         description="지역별 배송비를 설정할 수 있습니다. 설정한 배송비는 배송 주문에 적용됩니다."
-      />
+      >
+        {hasDuplicates && (
+          <div className="flex gap-2">
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={removeDuplicateDistricts}
+              className="flex items-center gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              중복 제거 ({duplicateDistricts.length}개)
+            </Button>
+          </div>
+        )}
+      </PageHeader>
 
       {/* 지역별 배송비 */}
       <Card>
@@ -159,65 +189,89 @@ export default function DeliveryFeesPage() {
               <TableBody>
                 {deliveryFees
                   .sort((a, b) => a.district.localeCompare(b.district, 'ko'))
-                  .map((fee) => (
-                  <TableRow key={fee.id}>
-                    <TableCell className="font-medium">{fee.district}</TableCell>
-                    <TableCell>
-                      {editingFee === fee.id ? (
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                                                     onKeyDown={(e) => {
-                             if (e.key === 'Enter') {
-                               handleEditSave(fee.id);
-                             } else if (e.key === 'Escape') {
-                               setEditingFee(null);
-                               setEditValue('');
-                             }
-                           }}
-                          autoFocus
-                          className="w-20"
-                        />
-                      ) : (
-                        <span>₩{fee.fee.toLocaleString()}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {editingFee === fee.id ? (
-                        <div className="flex gap-1 justify-center">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditSave(fee.id)}
-                          >
-                            <Save className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingFee(null);
-                              setEditValue('');
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditingFee(fee.id);
-                            setEditValue(fee.fee.toString());
-                          }}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  .map((fee) => {
+                    const isDuplicate = duplicateDistricts.some(dup => 
+                      dup.district === fee.district && dup.count > 1
+                    );
+                    return (
+                      <TableRow key={fee.id} className={isDuplicate ? 'bg-red-50' : ''}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {fee.district}
+                            {isDuplicate && (
+                              <Badge variant="destructive" className="text-xs">
+                                중복
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {editingFee === fee.id ? (
+                            <Input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                                                             onKeyDown={(e) => {
+                                 if (e.key === 'Enter') {
+                                   handleEditSave(fee.id || '');
+                                 } else if (e.key === 'Escape') {
+                                   setEditingFee(null);
+                                   setEditValue('');
+                                 }
+                               }}
+                              autoFocus
+                              className="w-20"
+                            />
+                          ) : (
+                            <span>₩{fee.fee.toLocaleString()}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {editingFee === fee.id ? (
+                            <div className="flex gap-1 justify-center">
+                                                             <Button
+                                 size="sm"
+                                 variant="outline"
+                                 onClick={() => handleEditSave(fee.id || '')}
+                               >
+                                <Save className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingFee(null);
+                                  setEditValue('');
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1 justify-center">
+                                                             <Button
+                                 size="sm"
+                                 variant="outline"
+                                 onClick={() => {
+                                   setEditingFee(fee.id || '');
+                                   setEditValue(fee.fee.toString());
+                                 }}
+                               >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                                                             <Button
+                                 size="sm"
+                                 variant="outline"
+                                 onClick={() => deleteDistrict(fee.id || '', fee.district)}
+                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                               >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </div>
@@ -236,6 +290,14 @@ export default function DeliveryFeesPage() {
                     ₩{Math.round(deliveryFees.reduce((sum, fee) => sum + fee.fee, 0) / deliveryFees.length).toLocaleString()}
                   </span>
                 </div>
+                {hasDuplicates && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">중복 데이터:</span>
+                    <span className="ml-2 font-medium text-red-600">
+                      {duplicateDistricts.length}개 지역 ({duplicateDistricts.reduce((sum, dup) => sum + dup.count, 0)}개 항목)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

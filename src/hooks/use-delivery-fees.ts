@@ -209,7 +209,7 @@ export function useDeliveryFees() {
     }
   };
 
-  // 새로운 지역 추가 함수
+  // 새로운 지역 추가
   const addNewDistrict = async (district: string, fee: number) => {
     try {
       // 중복 확인
@@ -223,28 +223,109 @@ export function useDeliveryFees() {
         return;
       }
 
-      const newFeeData = {
+      const docRef = await addDoc(collection(db, 'deliveryFees'), {
         district,
         fee,
-        freeThreshold: deliverySettings?.freeThreshold || 50000,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      };
-
-      await addDoc(collection(db, 'deliveryFees'), newFeeData);
+      });
       
       toast({
         title: '성공',
-        description: '새로운 지역이 추가되었습니다.',
+        description: '새 지역이 추가되었습니다.',
       });
       
       await fetchDeliveryFees();
     } catch (error) {
-      console.error('지역 추가 오류:', error);
+      console.error('새 지역 추가 오류:', error);
       toast({
         variant: 'destructive',
         title: '오류',
-        description: '지역 추가 중 오류가 발생했습니다.',
+        description: '새 지역 추가 중 오류가 발생했습니다.',
+      });
+    }
+  };
+
+  // 지역 삭제
+  const deleteDistrict = async (id: string, districtName: string) => {
+    try {
+      if (!confirm(`"${districtName}" 지역을 삭제하시겠습니까?`)) {
+        return;
+      }
+
+      await deleteDoc(doc(db, 'deliveryFees', id));
+      
+      toast({
+        title: '성공',
+        description: '지역이 삭제되었습니다.',
+      });
+      
+      await fetchDeliveryFees();
+    } catch (error) {
+      console.error('지역 삭제 오류:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '지역 삭제 중 오류가 발생했습니다.',
+      });
+    }
+  };
+
+  // 중복 데이터 제거
+  const removeDuplicateDistricts = async () => {
+    try {
+      const districtCounts = new Map<string, DeliveryFee[]>();
+      
+      // 지역별로 그룹화
+      deliveryFees.forEach(fee => {
+        if (!districtCounts.has(fee.district)) {
+          districtCounts.set(fee.district, []);
+        }
+        districtCounts.get(fee.district)!.push(fee);
+      });
+      
+      const batch = writeBatch(db);
+      let removedCount = 0;
+      
+      // 중복된 지역 처리
+      districtCounts.forEach((fees, district) => {
+        if (fees.length > 1) {
+          // 가장 최근에 업데이트된 것을 제외하고 나머지 삭제
+          const sortedFees = fees.sort((a, b) => {
+            const aTime = a.updatedAt?.toDate?.() || new Date(0);
+            const bTime = b.updatedAt?.toDate?.() || new Date(0);
+            return bTime.getTime() - aTime.getTime();
+          });
+          
+          // 첫 번째(최신)를 제외하고 나머지 삭제
+          for (let i = 1; i < sortedFees.length; i++) {
+            if (sortedFees[i].id) {
+              batch.delete(doc(db, 'deliveryFees', sortedFees[i].id!));
+              removedCount++;
+            }
+          }
+        }
+      });
+      
+      if (removedCount > 0) {
+        await batch.commit();
+        toast({
+          title: '성공',
+          description: `${removedCount}개의 중복 데이터가 제거되었습니다.`,
+        });
+        await fetchDeliveryFees();
+      } else {
+        toast({
+          title: '알림',
+          description: '중복 데이터가 없습니다.',
+        });
+      }
+    } catch (error) {
+      console.error('중복 데이터 제거 오류:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '중복 데이터 제거 중 오류가 발생했습니다.',
       });
     }
   };
@@ -255,6 +336,8 @@ export function useDeliveryFees() {
     fetchDeliveryFees,
     updateDeliveryFee,
     addNewDistrict,
+    deleteDistrict,
+    removeDuplicateDistricts,
     getDeliveryFeeByDistrict,
     // 기존 API 호환성
     refetch: fetchDeliveryFees
